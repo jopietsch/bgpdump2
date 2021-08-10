@@ -713,7 +713,12 @@ push_open_message (struct bgp_session_ *session)
 	push_be_uint(session, 2, my_as); /* my AS */
     }
     push_be_uint(session, 2, 90); /* holdtime */
-    push_be_uint(session, 4, 0x01020304); /* BGP ID 1.2.3.4 */
+    struct sockaddr_in localAddress;
+    socklen_t addressLength = sizeof(localAddress);
+    getsockname(session->sockfd, (struct sockaddr*)&localAddress,   \
+               &addressLength);
+
+    push_be_uint(session, 4, htonl(localAddress.sin_addr.s_addr));
 
     /* Optional parameters */
     push_be_uint(session, 1, 0); /* Optional Parameter length */
