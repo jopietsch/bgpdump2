@@ -39,7 +39,7 @@ extern int optopt;
 extern int opterr;
 extern int optreset;
 
-const char *optstring = "hVvdmbPp:a:uUrcjJ:kN:M:gl:L:46H:qf:G:B:S:t:DT:";
+const char *optstring = "hVvdmbPp:a:uUrcjJ:kN:M:gl:L:46H:qf:G:B:S:t:DT:w:";
 const struct option longopts[] =
 {
   { "help",         no_argument,       NULL, 'h' },
@@ -52,8 +52,6 @@ const struct option longopts[] =
   { "blaster-dump", no_argument,       NULL, 'D' },
   { "next-hop-self",required_argument, NULL, 'S' },
   { "quite",        no_argument,       NULL, 'q' },
-  { "json",         optional_argument, NULL, 'J' },
-  { "localpref",    required_argument, NULL, 'f' },
   { "peer-table",   no_argument,       NULL, 'P' },
   { "peer",         required_argument, NULL, 'p' },
   { "autnum",       required_argument, NULL, 'a' },
@@ -62,7 +60,6 @@ const struct option longopts[] =
   { "diff-table",   no_argument,       NULL, 'r' },
   { "count",        no_argument,       NULL, 'c' },
   { "plen-dist",    no_argument,       NULL, 'j' },
-  { "peer-group",   required_argument, NULL, 'G' },
   { "peer-stat",    no_argument,       NULL, 'k' },
   { "bufsiz",       required_argument, NULL, 'N' },
   { "nroutes",      required_argument, NULL, 'M' },
@@ -74,6 +71,7 @@ const struct option longopts[] =
   { "heatmap",      required_argument, NULL, 'H' },
   { "log",          required_argument, NULL, 't' },
   { "prefix-limit", required_argument, NULL, 'T' },
+  { "withdraw-delay", required_argument, NULL, 'w' },
   { NULL,           0,                 NULL, 0   }
 };
 
@@ -88,9 +86,9 @@ const char opthelp[] = "\
 -D, --blaster-dump        Blast BGP stream to a file.\n\
 -T, --prefix-limit        Prefix limit for Blaster mode.\n\
 -S, --next-hop-self <addr> Overwrite nexthop attribute.\n\
--J, --json <URL>          Dump routes as RtBrick JSON schema into BDS REST API.\n\
--G, --peer-group <name>   Peer group table name. In combination with --json option\n\
--f, --localpref           Set Local-Preference Attribute in RtBrick JSON export.\n\
+-a, --autnum <asn>        Blaster Mode. Specify ASN.\n\
+                          At most %d ASNs can be specified.\n\
+-w, --withdraw-delay      Blaster Mode. Send withdraw after <N> seconds.\n\
 -P, --peer-table          Display the peer table and exit.\n\
 -p, --peer <peer_index>   Specify peers by peer_index.\n\
                           At most %d peers can be specified.\n\
@@ -138,12 +136,6 @@ char *lookup_addr = NULL;
 char *lookup_file = NULL;
 int heatmap = 0;
 char *heatmap_prefix;
-int json_dump = 0;
-char json_page[128];
-char json_ip[128];
-char *json_peergroup = NULL;;
-int json_port = 19091;
-int localpref = -1;
 int blaster = 0;
 char *blaster_addr = NULL;
 int blaster_dump = 0;
@@ -151,6 +143,7 @@ int prefix_limit = 0;
 int nhs = 0;
 struct sockaddr_in nhs_addr4;
 struct sockaddr_in6 nhs_addr6;
+int withdraw_delay = 0;
 
 extern char *progname;
 extern int safi;
@@ -163,7 +156,7 @@ void
 usage ()
 {
   printf ("Usage: %s [options] <file1> <file2> ...\n", progname);
-  printf (opthelp, PEER_INDEX_MAX, BGPDUMP_BUFSIZ_DEFAULT,
+  printf (opthelp, PEER_INDEX_MAX, PEER_INDEX_MAX, BGPDUMP_BUFSIZ_DEFAULT,
           ROUTE_LIMIT_DEFAULT);
 }
 
@@ -281,25 +274,6 @@ bgpdump_getopt (int argc, char **argv)
               exit (-1);
             }
           break;
-
-        case 'J':
-          json_dump++;
-	  memset(json_ip, 0 , sizeof(json_ip));
-	  memset(json_page, 0 , sizeof(json_page));
-	  if (optarg) {
-	      sscanf(optarg, "http://%99[^:]:%99d/%99[^\n]",
-		     json_ip, &json_port, json_page);
-	  }
-          break;
-        case 'G':
-	  if (optarg) {
-	      json_peergroup = strdup(optarg);
-	  }
-          break;
-	case 'f':
-          localpref = strtoul(optarg, &endptr, 0);
-	  break;
-
         case 'l':
           lookup++;
           lookup_addr = optarg;
@@ -325,6 +299,9 @@ bgpdump_getopt (int argc, char **argv)
 	      nhs = AF_INET6;
 	  }
           break;
+        case 'w':
+          withdraw_delay = strtoul(optarg, &endptr, 0);
+	  break;
         case 't':
 	    log_enable(optarg);
 	  break;

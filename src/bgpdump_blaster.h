@@ -33,7 +33,7 @@ typedef enum
     ESTABLISHED
 } state_t;
 
-struct __attribute__((__packed__)) timer_
+struct timer_
 {
     CIRCLEQ_ENTRY(timer_) timer_qnode;
     char name[16];
@@ -45,7 +45,7 @@ struct __attribute__((__packed__)) timer_
 	expired:1;
 };
 
-struct __attribute__((__packed__)) bgp_session_
+struct bgp_session_
 {
     FILE *file;
     int sockfd;
@@ -80,7 +80,8 @@ struct __attribute__((__packed__)) bgp_session_
     struct ptree_node *ribwalk_pnode;
     int ribwalk_peer_index;
     int ribwalk_prefix_index;
-    uint ribwalk_complete:1;
+    uint ribwalk_complete:1, ribwalk_withdraw:1;
+    struct timespec eor_ts; /* Timestamp when end of RIB was sent */
 
     /*
      * Statistics.
@@ -88,6 +89,7 @@ struct __attribute__((__packed__)) bgp_session_
     struct {
 	uint updates_sent;
 	uint prefixes_sent;
+	uint prefixes_withdrawn;
 	uint octets_sent;
     } stats;
 };
